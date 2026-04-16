@@ -103,4 +103,10 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.ai)
 
+    // Location
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    
+    // Accompanist Permissions (optional, but good for Compose)
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+
 }

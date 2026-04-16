@@ -53,7 +53,11 @@ import com.theo.forest.ui.viewmodals.HomeViewModal
 import com.theo.forest.ui.theme.ForestTheme
 
 @Composable
-fun HomeScreen(viewModal: HomeViewModal = hiltViewModel(), navToDetail : () -> Unit = {}) {
+fun HomeScreen(
+    viewModal: HomeViewModal = hiltViewModel(),
+    navToDetail: () -> Unit = {},
+    navToWeather: () -> Unit = {}
+) {
 
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val context = LocalContext.current
@@ -70,6 +74,7 @@ fun HomeScreen(viewModal: HomeViewModal = hiltViewModel(), navToDetail : () -> U
                     @Suppress("DEPRECATION")
                     MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                 }
+                viewModal.pickedImage.value = bitmap
                 viewModal.getPrediction(bitmap!!)
             }
         }
@@ -80,13 +85,20 @@ fun HomeScreen(viewModal: HomeViewModal = hiltViewModel(), navToDetail : () -> U
     )
 
     Scaffold(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            ForestBottomBar(
+                currentScreen = "home",
+                onHomeClick = { /* Already on Home */ },
+                onWeatherClick = navToWeather
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
@@ -198,6 +210,44 @@ fun HomeScreen(viewModal: HomeViewModal = hiltViewModel(), navToDetail : () -> U
                 )
             }
         }
+    }
+}
+
+@Composable
+fun ForestBottomBar(
+    currentScreen: String,
+    onHomeClick: () -> Unit,
+    onWeatherClick: () -> Unit
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.primary,
+        tonalElevation = 8.dp
+    ) {
+        NavigationBarItem(
+            selected = currentScreen == "home",
+            onClick = onHomeClick,
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.home),
+                    contentDescription = "Home",
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            label = { Text("Home") }
+        )
+        NavigationBarItem(
+            selected = currentScreen == "weather",
+            onClick = onWeatherClick,
+            icon = {
+                Icon(
+                    painter = painterResource(R.drawable.chat), // Using chat icon as weather/forecast for now
+                    contentDescription = "Weather",
+                    modifier = Modifier.size(24.dp)
+                )
+            },
+            label = { Text("Weather") }
+        )
     }
 }
 

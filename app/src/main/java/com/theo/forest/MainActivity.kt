@@ -26,6 +26,8 @@ class MainActivity : ComponentActivity() {
         data object HOME
         @Serializable
         data object DETAIL
+        @Serializable
+        data object WEATHER
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,22 +36,34 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
 
-            // Obtain a ViewModel scoped to the Activity to share it between screens
-
             ForestTheme(dynamicColor = false) {
+                val viewModel: HomeViewModal = hiltViewModel()
                 NavHost(
                     navController = navController,
                     startDestination = Screens.HOME,
                 ) {
                     composable<Screens.HOME> {
                         HomeScreen(
+                            viewModal = viewModel,
                             navToDetail = {
                                 navController.navigate(Screens.DETAIL)
+                            },
+                            navToWeather = {
+                                navController.navigate(Screens.WEATHER)
                             }
                         )
                     }
                     composable<Screens.DETAIL> {
-                        DetailScreen( backPress = { navController.popBackStack() })
+                        DetailScreen(
+                            viewModal = viewModel,
+                            backPress = { navController.popBackStack() }
+                        )
+                    }
+                    composable<Screens.WEATHER> {
+                        com.theo.forest.ui.screens.WeatherForecastScreen(
+                            viewModal = viewModel,
+                            backPress = { navController.popBackStack() }
+                        )
                     }
                 }
             }

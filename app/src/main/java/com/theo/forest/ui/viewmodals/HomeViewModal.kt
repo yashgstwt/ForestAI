@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.theo.forest.data.modal.DiseaseInfo
 import com.theo.forest.data.modal.MLResult
 import com.theo.forest.data.modal.Response
+import com.theo.forest.data.modal.WeatherResponse
 import com.theo.forest.data.repository.ApiRepository
 import com.theo.forest.ml.DiseaseDetectionModal
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,12 +26,13 @@ class HomeViewModal @Inject constructor(
 
     val result: MutableState<MLResult> = mutableStateOf(MLResult("Detecting...", 0f))
     val res = MutableStateFlow<MLResult>(MLResult("Detecting...", 0f))
+    val pickedImage = mutableStateOf<Bitmap?>(null)
     
-    private val _pickedImage = mutableStateOf<Bitmap?>(null)
-    val pickedImage: MutableState<Bitmap?> = _pickedImage
-
     private val _diseaseInfo = MutableStateFlow<Response<DiseaseInfo?>>(Response.Loading)
     val diseaseInfo = _diseaseInfo.asStateFlow()
+
+    private val _weatherInfo = MutableStateFlow<Response<WeatherResponse>>(Response.Loading)
+    val weatherInfo = _weatherInfo.asStateFlow()
 
     init {
         mlModal.loadLabels()
@@ -38,13 +40,18 @@ class HomeViewModal @Inject constructor(
         mlModal.loadModel()
     }
 
+    fun getWeather(location: String) {
+        viewModelScope.launch {
+            _weatherInfo.value = Response.Loading
+            _weatherInfo.value = repository.getWeatherData(location, com.theo.forest.data.Constant.WEATHER_API_KEY)
+        }
+    }
+
     fun getPrediction(bitmap: Bitmap) {
-        _pickedImage.value = bitmap
         viewModelScope.launch {
             _diseaseInfo.value = Response.Loading
             val mlResult = mlModal.runInference(bitmap)
             result.value = mlResult
-            mlResult.disease.replace("___", ": ").replace("_", " ")
 
 
             if(mlResult.disease.contains("Background", ignoreCase = true)){

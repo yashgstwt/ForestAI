@@ -128,7 +128,7 @@ fun DetailScreen(
             // Confidence Score
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                "Accuracy: ${(mlResult.confidence).toInt()}%",
+                "Accuracy: ${(mlResult.confidence * 100).toInt()}%",
                 fontSize = 16.sp,
                 color = Color.Gray
             )
@@ -198,10 +198,10 @@ fun InfoSection(title: String, content: String) {
     }
 }
 
-@Preview(showSystemUi = true)
-@Composable
-fun DetailScreenPreview() {
-    ForestTheme(dynamicColor = false, darkTheme = false) {
-        DetailScreen()
-    }
-}
+//@Preview(showSystemUi = true)
+//@Composable
+//fun DetailScreenPreview() {
+//    ForestTheme(dynamicColor = false, darkTheme = false) {
+//        DetailScreen()
+//    }
+//}

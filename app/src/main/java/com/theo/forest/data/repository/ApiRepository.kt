@@ -6,7 +6,21 @@ import com.theo.forest.data.modal.*
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 
-class ApiRepository @Inject constructor(private val generativeModel: com.google.firebase.ai.GenerativeModel) {
+import com.theo.forest.data.remote.WeatherApiService
+
+class ApiRepository @Inject constructor(
+    private val generativeModel: com.google.firebase.ai.GenerativeModel,
+    private val weatherApiService: WeatherApiService
+) {
+
+    suspend fun getWeatherData(location: String, apiKey: String): Response<WeatherResponse> {
+        return try {
+            val response = weatherApiService.getNext7DaysForecast(location, apiKey = apiKey)
+            Response.Success(response)
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Failed to fetch weather data")
+        }
+    }
 
     suspend fun getDiseaseInfo(diseaseName: String): Response<DiseaseInfo> {
         val prompt = """

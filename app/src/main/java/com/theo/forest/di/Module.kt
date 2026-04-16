@@ -19,6 +19,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
+import com.theo.forest.data.remote.WeatherApiService
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+
 @Module
 @InstallIn(SingletonComponent::class)
 object Module {
@@ -40,8 +44,26 @@ object Module {
 
     @Provides
     @Singleton
-    fun provideRepository(generativeModel: com.google.firebase.ai.GenerativeModel): ApiRepository {
-        return ApiRepository(generativeModel)
+    fun provideRetrofit(): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("https://weather.visualcrossing.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideWeatherApiService(retrofit: Retrofit): WeatherApiService {
+        return retrofit.create(WeatherApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideRepository(
+        generativeModel: com.google.firebase.ai.GenerativeModel,
+        weatherApiService: WeatherApiService
+    ): ApiRepository {
+        return ApiRepository(generativeModel, weatherApiService)
     }
 
 }
