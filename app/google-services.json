@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "674176397313",
+    "project_id": "forest-1425d",
+    "storage_bucket": "forest-1425d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:674176397313:android:e844af4abd4267a244d000",
+        "android_client_info": {
+          "package_name": "com.theo.forest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD2haC_G-ZauZdAgT9m_HYqULiK1W0h010"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
