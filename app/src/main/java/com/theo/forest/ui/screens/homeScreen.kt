@@ -52,6 +52,7 @@ import com.theo.forest.data.modal.Response
 import com.theo.forest.ui.viewmodals.HomeViewModal
 import com.theo.forest.ui.theme.ForestTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModal: HomeViewModal = hiltViewModel(),
@@ -63,6 +64,7 @@ fun HomeScreen(
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     val diseaseInfoState by viewModal.diseaseInfo.collectAsState()
+    val useGemini by viewModal.useGemini
 
     val pickMedia =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -86,6 +88,35 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("Forest Disease Detection", fontWeight = FontWeight.Bold) },
+                actions = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(end = 16.dp)
+                    ) {
+                        Text(
+                            text = if (useGemini) "Gemini AI" else "Local TFLite",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (useGemini) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = useGemini,
+                            onCheckedChange = { viewModal.toggleModal(it) },
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(if (useGemini) R.drawable.chat else R.drawable.leaf),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    }
+                }
+            )
+        },
         bottomBar = {
             ForestBottomBar(
                 currentScreen = "home",

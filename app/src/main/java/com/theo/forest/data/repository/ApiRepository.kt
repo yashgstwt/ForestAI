@@ -5,11 +5,12 @@ import com.google.gson.Gson
 import com.theo.forest.data.modal.*
 import kotlinx.coroutines.delay
 import javax.inject.Inject
-
 import com.theo.forest.data.remote.WeatherApiService
+import com.google.firebase.ai.GenerativeModel
+import com.google.firebase.ai.type.content
 
 class ApiRepository @Inject constructor(
-    private val generativeModel: com.google.firebase.ai.GenerativeModel,
+    private val generativeModel: GenerativeModel,
     private val weatherApiService: WeatherApiService
 ) {
 
@@ -40,6 +41,61 @@ class ApiRepository @Inject constructor(
             }
         """.trimIndent()
 
+        return callGemini(prompt)
+    }
+
+    suspend fun getGeminiPrediction(bitmap: android.graphics.Bitmap): Response<Pair<MLResult, DiseaseInfo>> {
+        val prompt = """
+            Analyze this plant leaf image. 
+            First, identify the disease or if it is healthy.
+            Then, provide detailed information.
+            
+            Return ONLY a JSON object with two parts:
+            1. "prediction": { "disease": "disease name", "confidence": 0.95 }
+            2. "info": { "description": "...", "symptoms": "...", "causes": "...", "treatment": "...", "prevention": "..." }
+            
+            If it's just a background or not a leaf, set disease to "Background".
+            Confidence should be a float between 0 and 1.
+        """.trimIndent()
+
+        return try {
+            val response = generativeModel.generateContent(
+                content {
+                    image(bitmap)
+                    text(prompt)
+                }
+            )
+            val jsonString = extractJson(response.text)
+            if (jsonString != null) {
+                val root = Gson().fromJson(jsonString, com.google.gson.JsonObject::class.java)
+                val predictionJson = root.getAsJsonObject("prediction")
+                val infoJson = root.getAsJsonObject("info")
+                
+                val mlResult = MLResult(
+                    disease = predictionJson.get("disease").asString,
+                    confidence = predictionJson.get("confidence").asFloat
+                )
+                val diseaseInfo = Gson().fromJson(infoJson, DiseaseInfo::class.java)
+                
+                Response.Success(Pair(mlResult, diseaseInfo))
+            } else {
+                Response.Error("Invalid AI response")
+            }
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Gemini Analysis Failed")
+        }
+    }
+
+    private fun extractJson(text: String?): String? {
+        if (text == null) return null
+        val startIndex = text.indexOf("{")
+        val endIndex = text.lastIndexOf("}")
+        return if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            text.substring(startIndex, endIndex + 1)
+        } else null
+    }
+
+    private suspend fun callGemini(prompt: String): Response<DiseaseInfo> {
         var retryCount = 0
         val maxRetries = 3
         var lastException: Exception? = null
@@ -47,16 +103,9 @@ class ApiRepository @Inject constructor(
         while (retryCount < maxRetries) {
             try {
                 val response = generativeModel.generateContent(prompt)
-                var jsonString = response.text
+                val jsonString = extractJson(response.text)
 
                 if (jsonString != null) {
-                    val startIndex = jsonString.indexOf("{")
-                    val endIndex = jsonString.lastIndexOf("}")
-                    
-                    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-                        jsonString = jsonString.substring(startIndex, endIndex + 1)
-                    }
-
                     return try {
                         val diseaseInfo = Gson().fromJson(jsonString, DiseaseInfo::class.java)
                         Response.Success(diseaseInfo)
@@ -73,17 +122,13 @@ class ApiRepository @Inject constructor(
                 if (errorMessage.contains("high demand", ignoreCase = true) || 
                     errorMessage.contains("429", ignoreCase = true)) {
                     retryCount++
-                    val waitTime = (1000L * (retryCount * 2)) // Exponential backoff: 2s, 4s, 6s...
-                    Log.w("TFLite", "API high demand, retrying in ${waitTime}ms (Attempt $retryCount/$maxRetries)")
+                    val waitTime = (1000L * (retryCount * 2))
                     delay(waitTime)
                 } else {
-                    // For other errors, don't retry
                     break
                 }
             }
         }
-
-        Log.e("TFLite", "API Error after $retryCount retries: ${lastException?.message}", lastException)
-        return Response.Error(lastException?.localizedMessage ?: "Maximum retries reached or unknown error")
+        return Response.Error(lastException?.localizedMessage ?: "Gemini Error")
     }
 }

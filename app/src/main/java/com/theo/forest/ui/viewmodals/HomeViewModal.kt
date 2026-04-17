@@ -34,10 +34,16 @@ class HomeViewModal @Inject constructor(
     private val _weatherInfo = MutableStateFlow<Response<WeatherResponse>>(Response.Loading)
     val weatherInfo = _weatherInfo.asStateFlow()
 
+    val useGemini = mutableStateOf(false)
+
     init {
         mlModal.loadLabels()
         mlModal.loadMetadata()
         mlModal.loadModel()
+    }
+
+    fun toggleModal(isGemini: Boolean) {
+        useGemini.value = isGemini
     }
 
     fun getWeather(location: String) {
@@ -50,28 +56,40 @@ class HomeViewModal @Inject constructor(
     fun getPrediction(bitmap: Bitmap) {
         viewModelScope.launch {
             _diseaseInfo.value = Response.Loading
-            val mlResult = mlModal.runInference(bitmap)
-            result.value = mlResult
-
-
-            if(mlResult.disease.contains("Background", ignoreCase = true)){
-                _diseaseInfo.value = Response.Success(
-                    null
-                )
-            } else if (!mlResult.disease.contains("healthy", ignoreCase = true)) {
-                _diseaseInfo.value = repository.getDiseaseInfo(mlResult.disease)
-                Log.d("TFLite", _diseaseInfo.value.toString())
-//                Log.d("TFLite", "background leaf detected")
+            
+            if (useGemini.value) {
+                val geminiResponse = repository.getGeminiPrediction(bitmap)
+                when (geminiResponse) {
+                    is Response.Success -> {
+                        val (mlResult, info) = geminiResponse.result
+                        result.value = mlResult
+                        _diseaseInfo.value = Response.Success(info)
+                    }
+                    is Response.Error -> {
+                        _diseaseInfo.value = Response.Error(geminiResponse.error)
+                    }
+                    else -> {}
+                }
             } else {
-                _diseaseInfo.value = Response.Success(
-                    DiseaseInfo(
-                        description = "The plant appears to be healthy.",
-                        symptoms = "No symptoms detected.",
-                        causes = "N/A",
-                        treatment = "Continue regular maintenance and monitoring.",
-                        prevention = "Maintain good cultural practices."
+                val mlResult = mlModal.runInference(bitmap)
+                result.value = mlResult
+
+                if(mlResult.disease.contains("Background", ignoreCase = true)){
+                    _diseaseInfo.value = Response.Success(null)
+                } else if (!mlResult.disease.contains("healthy", ignoreCase = true)) {
+                    _diseaseInfo.value = repository.getDiseaseInfo(mlResult.disease)
+                    Log.d("TFLite", _diseaseInfo.value.toString())
+                } else {
+                    _diseaseInfo.value = Response.Success(
+                        DiseaseInfo(
+                            description = "The plant appears to be healthy.",
+                            symptoms = "No symptoms detected.",
+                            causes = "N/A",
+                            treatment = "Continue regular maintenance and monitoring.",
+                            prevention = "Maintain good cultural practices."
+                        )
                     )
-                )
+                }
             }
         }
     }
