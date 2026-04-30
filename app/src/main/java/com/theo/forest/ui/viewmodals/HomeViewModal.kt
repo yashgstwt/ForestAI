@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.theo.forest.data.modal.DiseaseInfo
 import com.theo.forest.data.modal.MLResult
 import com.theo.forest.data.modal.Response
+import com.theo.forest.data.modal.ScanRecord
 import com.theo.forest.data.modal.WeatherResponse
 import com.theo.forest.data.repository.ApiRepository
 import com.theo.forest.ml.DiseaseDetectionModal
@@ -21,7 +22,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModal @Inject constructor(
     private val mlModal: DiseaseDetectionModal,
-    private val repository: ApiRepository,
+    val repository: ApiRepository,
 ) : ViewModel() {
 
     val result: MutableState<MLResult> = mutableStateOf(MLResult("Detecting...", 0f))
@@ -37,12 +38,80 @@ class HomeViewModal @Inject constructor(
     private val _saveState = MutableStateFlow<Response<Unit>>(Response.Loading)
     val saveState = _saveState.asStateFlow()
 
+    private val _authState = MutableStateFlow<Response<Unit>>(Response.Loading)
+    val authState = _authState.asStateFlow()
+
+    private val _userScans = MutableStateFlow<Response<List<ScanRecord>>>(Response.Loading)
+    val userScans = _userScans.asStateFlow()
+
     val useGemini = mutableStateOf(false)
 
     init {
         mlModal.loadLabels()
         mlModal.loadMetadata()
         mlModal.loadModel()
+        checkAuth()
+    }
+
+    private fun checkAuth() {
+        if (repository.getCurrentUserId() != null) {
+            _authState.value = Response.Success(Unit)
+            loadUserScans()
+        } else {
+            _authState.value = Response.Error("Not logged in")
+        }
+    }
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            _authState.value = Response.Loading
+            val response = repository.signIn(email, password)
+            _authState.value = response
+            if (response is Response.Success) {
+                loadUserScans()
+            }
+        }
+    }
+
+    fun signUp(email: String, password: String) {
+        viewModelScope.launch {
+            _authState.value = Response.Loading
+            val response = repository.signUp(email, password)
+            if (response is Response.Success) {
+                // Automatically attempt to sign in after successful sign up
+                val loginResponse = repository.signIn(email, password)
+                _authState.value = loginResponse
+                if (loginResponse is Response.Success) {
+                    loadUserScans()
+                }
+            } else {
+                _authState.value = response
+            }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            repository.signOut()
+            _authState.value = Response.Error("Logged out")
+            _userScans.value = Response.Success(emptyList<ScanRecord>())
+        }
+    }
+
+    fun loadUserScans() {
+        viewModelScope.launch {
+            _userScans.value = Response.Loading
+            _userScans.value = repository.getUserScans()
+        }
+    }
+
+    fun deleteScan(scanId: Int) {
+        viewModelScope.launch {
+            val response = repository.deleteScan(scanId)
+            if (response is Response.Success) {
+                loadUserScans()
+            }
+        }
     }
 
     fun toggleModal(isGemini: Boolean) {

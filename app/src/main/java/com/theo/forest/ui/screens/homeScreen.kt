@@ -58,7 +58,8 @@ import com.theo.forest.ui.theme.ForestTheme
 fun HomeScreen(
     viewModal: HomeViewModal = hiltViewModel(),
     navToDetail: () -> Unit = {},
-    navToWeather: () -> Unit = {}
+    navToWeather: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
 
     val secondaryColor = MaterialTheme.colorScheme.secondary
@@ -105,6 +106,14 @@ fun HomeScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Forest Disease Detection", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        viewModal.logout()
+                        onLogout()
+                    }) {
+                        Icon(painter = painterResource(R.drawable.home), contentDescription = "Logout") // Reusing home icon for logout
+                    }
+                },
                 actions = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

@@ -4,7 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.theo.forest.data.modal.Response
+import com.theo.forest.ui.screens.AuthScreen
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -23,6 +26,8 @@ class MainActivity : ComponentActivity() {
     @Serializable
     sealed class Screens {
         @Serializable
+        data object AUTH
+        @Serializable
         data object HOME
         @Serializable
         data object DETAIL
@@ -38,10 +43,22 @@ class MainActivity : ComponentActivity() {
 
             ForestTheme(dynamicColor = false) {
                 val viewModel: HomeViewModal = hiltViewModel()
+                val authState by viewModel.authState.collectAsState()
+
                 NavHost(
                     navController = navController,
-                    startDestination = Screens.HOME,
+                    startDestination = if (viewModel.repository.getCurrentUserId() != null) Screens.HOME else Screens.AUTH,
                 ) {
+                    composable<Screens.AUTH> {
+                        AuthScreen(
+                            viewModal = viewModel,
+                            onAuthSuccess = {
+                                navController.navigate(Screens.HOME) {
+                                    popUpTo(Screens.AUTH) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                     composable<Screens.HOME> {
                         HomeScreen(
                             viewModal = viewModel,
@@ -50,6 +67,11 @@ class MainActivity : ComponentActivity() {
                             },
                             navToWeather = {
                                 navController.navigate(Screens.WEATHER)
+                            },
+                            onLogout = {
+                                navController.navigate(Screens.AUTH) {
+                                    popUpTo(Screens.HOME) { inclusive = true }
+                                }
                             }
                         )
                     }

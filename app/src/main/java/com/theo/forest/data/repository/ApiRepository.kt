@@ -8,9 +8,13 @@ import com.google.gson.Gson
 import com.theo.forest.data.modal.*
 import com.theo.forest.data.remote.WeatherApiService
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import javax.inject.Inject
@@ -21,10 +25,76 @@ class ApiRepository @Inject constructor(
     private val supabase: SupabaseClient
 ) {
 
+    suspend fun signUp(email: String, password: String): Response<Unit> {
+        return try {
+            supabase.auth.signUpWith(Email) {
+                this.email = email
+                this.password = password
+            }
+            Response.Success(Unit)
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Sign up failed")
+        }
+    }
+
+    suspend fun signIn(email: String, password: String): Response<Unit> {
+        return try {
+            supabase.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+            Response.Success(Unit)
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Sign in failed")
+        }
+    }
+
+    suspend fun signOut(): Response<Unit> {
+        return try {
+            supabase.auth.signOut()
+            Response.Success(Unit)
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Sign out failed")
+        }
+    }
+
+    fun getCurrentUserId(): String? {
+        return supabase.auth.currentUserOrNull()?.id
+    }
+
+    suspend fun getUserScans(): Response<List<ScanRecord>> {
+        return try {
+            val userId = getCurrentUserId() ?: return Response.Error("User not logged in")
+            val scans = supabase.postgrest.from("scans")
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                    }
+                }.decodeList<ScanRecord>()
+            Response.Success(scans)
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Failed to fetch scans")
+        }
+    }
+
+    suspend fun deleteScan(scanId: Int): Response<Unit> {
+        return try {
+            supabase.postgrest.from("scans").delete {
+                filter {
+                    eq("id", scanId)
+                }
+            }
+            Response.Success(Unit)
+        } catch (e: Exception) {
+            Response.Error(e.localizedMessage ?: "Failed to delete scan")
+        }
+    }
+
     suspend fun saveScanResult(bitmap: Bitmap, mlResult: MLResult, info: DiseaseInfo?): Response<Unit> {
         return try {
-            Log.d("Supabase", "Starting saveScanResult")
-            val fileName = "${UUID.randomUUID()}.jpg"
+            val userId = getCurrentUserId() ?: return Response.Error("User not logged in")
+            Log.d("Supabase", "Starting saveScanResult for user: $userId")
+            val fileName = "$userId/${UUID.randomUUID()}.jpg"
             val bucket = supabase.storage.from("scans")
 
             val baos = ByteArrayOutputStream()
@@ -37,6 +107,7 @@ class ApiRepository @Inject constructor(
             Log.d("Supabase", "Image uploaded: $imageUrl")
 
             val record = ScanRecord(
+                user_id = userId,
                 disease = mlResult.disease,
                 confidence = mlResult.confidence,
                 image_url = imageUrl,

@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ScanRecord(
     val id: Int? = null,
+    val user_id: String,
     val disease: String,
     val confidence: Float,
     val image_url: String,
