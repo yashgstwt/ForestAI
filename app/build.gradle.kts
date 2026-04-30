@@ -95,7 +95,14 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
 
     // Updated Gemini SDK to fix internal parsing bugs
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+//    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+    //supabase
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.5.0"))
+    implementation("io.github.jan-tennert.supabase:postgrest-kt")
+    implementation("io.github.jan-tennert.supabase:storage-kt")
+    implementation("io.github.jan-tennert.supabase:auth-kt")
+    implementation("io.ktor:ktor-client-android:3.4.3")
 
 
     //firebase

@@ -1,18 +1,61 @@
 package com.theo.forest.data.repository
 
+import android.graphics.Bitmap
 import android.util.Log
-import com.google.gson.Gson
-import com.theo.forest.data.modal.*
-import kotlinx.coroutines.delay
-import javax.inject.Inject
-import com.theo.forest.data.remote.WeatherApiService
 import com.google.firebase.ai.GenerativeModel
 import com.google.firebase.ai.type.content
+import com.google.gson.Gson
+import com.theo.forest.data.modal.*
+import com.theo.forest.data.remote.WeatherApiService
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.delay
+import java.io.ByteArrayOutputStream
+import java.util.UUID
+import javax.inject.Inject
 
 class ApiRepository @Inject constructor(
     private val generativeModel: GenerativeModel,
-    private val weatherApiService: WeatherApiService
+    private val weatherApiService: WeatherApiService,
+    private val supabase: SupabaseClient
 ) {
+
+    suspend fun saveScanResult(bitmap: Bitmap, mlResult: MLResult, info: DiseaseInfo?): Response<Unit> {
+        return try {
+            Log.d("Supabase", "Starting saveScanResult")
+            val fileName = "${UUID.randomUUID()}.jpg"
+            val bucket = supabase.storage.from("scans")
+
+            val baos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, baos)
+            val byteArray = baos.toByteArray()
+
+            Log.d("Supabase", "Uploading image: $fileName")
+            bucket.upload(fileName, byteArray)
+            val imageUrl = bucket.publicUrl(fileName)
+            Log.d("Supabase", "Image uploaded: $imageUrl")
+
+            val record = ScanRecord(
+                disease = mlResult.disease,
+                confidence = mlResult.confidence,
+                image_url = imageUrl,
+                description = info?.description,
+                symptoms = info?.symptoms,
+                causes = info?.causes,
+                treatment = info?.treatment,
+                prevention = info?.prevention
+            )
+
+            Log.d("Supabase", "Inserting record: $record")
+            supabase.postgrest.from("scans").insert(record)
+            Log.d("Supabase", "Record inserted successfully")
+            Response.Success(Unit)
+        } catch (e: Exception) {
+            Log.e("Supabase", "Error saving scan: ${e.message}", e)
+            Response.Error(e.localizedMessage ?: "Failed to save to Supabase")
+        }
+    }
 
     suspend fun getWeatherData(location: String, apiKey: String): Response<WeatherResponse> {
         return try {

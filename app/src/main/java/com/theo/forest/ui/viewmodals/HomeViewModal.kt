@@ -34,6 +34,9 @@ class HomeViewModal @Inject constructor(
     private val _weatherInfo = MutableStateFlow<Response<WeatherResponse>>(Response.Loading)
     val weatherInfo = _weatherInfo.asStateFlow()
 
+    private val _saveState = MutableStateFlow<Response<Unit>>(Response.Loading)
+    val saveState = _saveState.asStateFlow()
+
     val useGemini = mutableStateOf(false)
 
     init {
@@ -56,6 +59,7 @@ class HomeViewModal @Inject constructor(
     fun getPrediction(bitmap: Bitmap) {
         viewModelScope.launch {
             _diseaseInfo.value = Response.Loading
+            _saveState.value = Response.Loading
             
             if (useGemini.value) {
                 val geminiResponse = repository.getGeminiPrediction(bitmap)
@@ -64,9 +68,14 @@ class HomeViewModal @Inject constructor(
                         val (mlResult, info) = geminiResponse.result
                         result.value = mlResult
                         _diseaseInfo.value = Response.Success(info)
+                        
+                        // Save to Supabase including disease details
+                        _saveState.value = repository.saveScanResult(bitmap, mlResult, info)
                     }
                     is Response.Error -> {
-                        _diseaseInfo.value = Response.Error(geminiResponse.error)
+                        val errorMsg = geminiResponse.error
+                        _diseaseInfo.value = Response.Error(errorMsg)
+                        _saveState.value = Response.Error(errorMsg)
                     }
                     else -> {}
                 }
@@ -74,21 +83,29 @@ class HomeViewModal @Inject constructor(
                 val mlResult = mlModal.runInference(bitmap)
                 result.value = mlResult
 
+                var diseaseInfo: DiseaseInfo? = null
                 if(mlResult.disease.contains("Background", ignoreCase = true)){
                     _diseaseInfo.value = Response.Success(null)
                 } else if (!mlResult.disease.contains("healthy", ignoreCase = true)) {
-                    _diseaseInfo.value = repository.getDiseaseInfo(mlResult.disease)
-                    Log.d("TFLite", _diseaseInfo.value.toString())
+                    val infoResponse = repository.getDiseaseInfo(mlResult.disease)
+                    _diseaseInfo.value = infoResponse
+                    if (infoResponse is Response.Success) {
+                        diseaseInfo = infoResponse.result
+                    }
                 } else {
-                    _diseaseInfo.value = Response.Success(
-                        DiseaseInfo(
-                            description = "The plant appears to be healthy.",
-                            symptoms = "No symptoms detected.",
-                            causes = "N/A",
-                            treatment = "Continue regular maintenance and monitoring.",
-                            prevention = "Maintain good cultural practices."
-                        )
+                    diseaseInfo = DiseaseInfo(
+                        description = "The plant appears to be healthy.",
+                        symptoms = "No symptoms detected.",
+                        causes = "N/A",
+                        treatment = "Continue regular maintenance and monitoring.",
+                        prevention = "Maintain good cultural practices."
                     )
+                    _diseaseInfo.value = Response.Success(diseaseInfo)
+                }
+                
+                // Save TFLite result to Supabase
+                if (!mlResult.disease.contains("Background", ignoreCase = true)) {
+                    _saveState.value = repository.saveScanResult(bitmap, mlResult, diseaseInfo)
                 }
             }
         }

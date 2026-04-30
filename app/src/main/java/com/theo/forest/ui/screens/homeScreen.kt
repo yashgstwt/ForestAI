@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -64,7 +65,20 @@ fun HomeScreen(
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     val diseaseInfoState by viewModal.diseaseInfo.collectAsState()
+    val saveState by viewModal.saveState.collectAsState()
     val useGemini by viewModal.useGemini
+
+    LaunchedEffect(saveState) {
+        when (saveState) {
+            is Response.Success -> {
+                Toast.makeText(context, "Data successfully saved to Supabase!", Toast.LENGTH_SHORT).show()
+            }
+            is Response.Error -> {
+                Toast.makeText(context, "Error saving to Supabase: ${(saveState as Response.Error).error}", Toast.LENGTH_LONG).show()
+            }
+            else -> {}
+        }
+    }
 
     val pickMedia =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->

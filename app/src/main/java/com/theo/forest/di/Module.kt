@@ -1,15 +1,11 @@
 package com.theo.forest.di
 
 import android.content.Context
-import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.HarmCategory
-import com.google.ai.client.generativeai.type.SafetySetting
-import com.google.ai.client.generativeai.type.generationConfig
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import com.google.firebase.ai.type.GenerativeBackend
-import com.google.firebase.ai.type.HarmBlockThreshold
 import com.theo.forest.Protected
+import com.theo.forest.data.remote.WeatherApiService
 import com.theo.forest.data.repository.ApiRepository
 import com.theo.forest.ml.DiseaseDetectionModal
 import dagger.Module
@@ -17,11 +13,14 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import javax.inject.Singleton
-
-import com.theo.forest.data.remote.WeatherApiService
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
+import io.github.jan.supabase.auth.Auth
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -36,10 +35,21 @@ object Module {
     @Provides
     @Singleton
     fun provideGenerativeModel(): com.google.firebase.ai.GenerativeModel {
-        return Firebase.ai(backend = GenerativeBackend.googleAI())
-            .generativeModel(
-                modelName = "gemini-2.5-flash-lite",
-            )
+        return Firebase.ai.generativeModel(
+            modelName = "gemini-2.5-flash-lite",
+        )
+    }
+    @Provides
+    @Singleton
+    fun provideSupabaseClient(): SupabaseClient {
+        return createSupabaseClient(
+            supabaseUrl = Protected.SUPABASE_URL,
+            supabaseKey = Protected.SUPABASE_ANON_KEY
+        ) {
+            install(Postgrest)
+            install(Storage)
+            install(Auth)
+        }
     }
 
     @Provides
@@ -60,10 +70,12 @@ object Module {
     @Provides
     @Singleton
     fun provideRepository(
+        // Use the EXACT same type as provided above
         generativeModel: com.google.firebase.ai.GenerativeModel,
-        weatherApiService: WeatherApiService
+        weatherApiService: WeatherApiService,
+        supabaseClient: SupabaseClient
     ): ApiRepository {
-        return ApiRepository(generativeModel, weatherApiService)
+        return ApiRepository(generativeModel, weatherApiService, supabaseClient)
     }
 
 }
