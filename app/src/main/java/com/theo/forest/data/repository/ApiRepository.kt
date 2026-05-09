@@ -27,10 +27,20 @@ class ApiRepository @Inject constructor(
 
     suspend fun signUp(email: String, password: String): Response<Unit> {
         return try {
-            supabase.auth.signUpWith(Email) {
+            val user = supabase.auth.signUpWith(Email) {
                 this.email = email
                 this.password = password
             }
+            
+            // If user is created successfully, add them to our custom 'users' table
+            if (user != null) {
+                val userData = User(
+                    id = user.id,
+                    email = user.email ?: email
+                )
+                supabase.postgrest.from("users").insert(userData)
+            }
+
             Response.Success(Unit)
         } catch (e: Exception) {
             Response.Error(e.localizedMessage ?: "Sign up failed")

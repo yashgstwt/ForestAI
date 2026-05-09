@@ -70,7 +70,6 @@ object Module {
     @Provides
     @Singleton
     fun provideRepository(
-        // Use the EXACT same type as provided above
         generativeModel: com.google.firebase.ai.GenerativeModel,
         weatherApiService: WeatherApiService,
         supabaseClient: SupabaseClient
