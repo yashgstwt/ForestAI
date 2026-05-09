@@ -15,8 +15,10 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -71,9 +73,11 @@ fun HomeScreen(
             is Response.Success -> {
                 Toast.makeText(context, "Data successfully saved!", Toast.LENGTH_SHORT).show()
             }
+
             is Response.Error -> {
                 Log.e("Supabase", "Save error: ${(saveState as Response.Error).error}")
             }
+
             else -> {}
         }
     }
@@ -165,6 +169,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(280.dp)
+                    .border(BorderStroke(1.dp, Color.Black),RoundedCornerShape(40.dp))
                     .clip(RoundedCornerShape(40.dp))
                     .background(Color.White.copy(alpha = 0.3f))
                     .clickable { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
@@ -178,6 +183,7 @@ fun HomeScreen(
                         contentScale = ContentScale.Crop
                     )
                 } else {
+
                     Icon(
                         painter = painterResource(R.drawable.leaf),
                         contentDescription = null,
@@ -202,6 +208,7 @@ fun HomeScreen(
                         )
                     }
                 }
+
                 is Response.Success -> {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
@@ -229,6 +236,7 @@ fun HomeScreen(
                         }
                     }
                 }
+
                 is Response.Error -> {
                     ErrorUI(
                         message = (diseaseInfoState as Response.Error).error,
@@ -346,7 +354,9 @@ fun ErrorUI(message: String, onRetry: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
         shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth().padding(8.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -391,8 +401,8 @@ fun CropLabel(modifier: Modifier = Modifier) {
                     .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Text(
-                    it, 
-                    fontSize = 14.sp, 
+                    it,
+                    fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
