@@ -91,15 +91,31 @@ fun DetailScreen(
                 .verticalScroll(scrollState)
         ) {
             // Image Card
-            if (viewModal.pickedImage.value != null) {
+            val pickedImage = viewModal.pickedImage.value
+            val selectedImageUrl = viewModal.selectedImageUrl.value
+
+            if (pickedImage != null) {
                 Image(
-                    bitmap = viewModal.pickedImage.value!!.asImageBitmap(),
+                    bitmap = pickedImage.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(250.dp)
                         .clip(RoundedCornerShape(40.dp)),
                     contentScale = ContentScale.Crop
+                )
+            } else if (selectedImageUrl != null) {
+                androidx.compose.ui.platform.LocalContext.current
+                coil.compose.AsyncImage(
+                    model = selectedImageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp)
+                        .clip(RoundedCornerShape(40.dp)),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(R.drawable.leaf),
+                    error = painterResource(R.drawable.leaf)
                 )
             } else {
                 Image(

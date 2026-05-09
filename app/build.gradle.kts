@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.core)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // Using the stable version from your libs.versions.toml
     implementation(libs.tensorflow.lite)
@@ -116,4 +117,6 @@ dependencies {
     // Accompanist Permissions (optional, but good for Compose)
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
 }

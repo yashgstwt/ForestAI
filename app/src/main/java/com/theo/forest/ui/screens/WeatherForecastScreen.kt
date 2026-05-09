@@ -38,6 +38,8 @@ import com.theo.forest.ui.viewmodals.HomeViewModal
 @Composable
 fun WeatherForecastScreen(
     viewModal: HomeViewModal,
+    navToHome: () -> Unit,
+    navToHistory: () -> Unit,
     backPress: () -> Unit
 ) {
     val context = LocalContext.current
@@ -159,8 +161,9 @@ fun WeatherForecastScreen(
         bottomBar = {
           ForestBottomBar(
                 currentScreen = "weather",
-                onHomeClick = backPress, // Navigates back to home
-                onWeatherClick = { /* Already here */ }
+                onHomeClick = navToHome,
+                onWeatherClick = { /* Already here */ },
+                onHistoryClick = navToHistory
             )
         }
     ) { paddingValues ->

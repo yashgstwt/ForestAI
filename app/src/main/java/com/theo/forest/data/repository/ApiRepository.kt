@@ -22,7 +22,7 @@ import javax.inject.Inject
 class ApiRepository @Inject constructor(
     private val generativeModel: GenerativeModel,
     private val weatherApiService: WeatherApiService,
-    private val supabase: SupabaseClient
+    val supabase: SupabaseClient
 ) {
 
     suspend fun signUp(email: String, password: String): Response<Unit> {

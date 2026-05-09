@@ -15,7 +15,10 @@ import com.theo.forest.data.repository.ApiRepository
 import com.theo.forest.ml.DiseaseDetectionModal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,6 +31,7 @@ class HomeViewModal @Inject constructor(
     val result: MutableState<MLResult> = mutableStateOf(MLResult("Detecting...", 0f))
     val res = MutableStateFlow<MLResult>(MLResult("Detecting...", 0f))
     val pickedImage = mutableStateOf<Bitmap?>(null)
+    val selectedImageUrl = mutableStateOf<String?>(null)
     
     private val _diseaseInfo = MutableStateFlow<Response<DiseaseInfo?>>(Response.Loading)
     val diseaseInfo = _diseaseInfo.asStateFlow()
@@ -54,11 +58,21 @@ class HomeViewModal @Inject constructor(
     }
 
     private fun checkAuth() {
-        if (repository.getCurrentUserId() != null) {
-            _authState.value = Response.Success(Unit)
-            loadUserScans()
-        } else {
-            _authState.value = Response.Error("Not logged in")
+        viewModelScope.launch {
+            repository.supabase.auth.sessionStatus.collectLatest { status ->
+                when (status) {
+                    is SessionStatus.Authenticated -> {
+                        _authState.value = Response.Success(Unit)
+                        loadUserScans()
+                    }
+                    is SessionStatus.NotAuthenticated -> {
+                        _authState.value = Response.Error("Not logged in")
+                    }
+                    else -> {
+                        _authState.value = Response.Loading
+                    }
+                }
+            }
         }
     }
 
@@ -114,6 +128,20 @@ class HomeViewModal @Inject constructor(
         }
     }
 
+    fun selectScan(record: ScanRecord) {
+        result.value = MLResult(record.disease, record.confidence)
+        val info = DiseaseInfo(
+            description = record.description ?: "",
+            symptoms = record.symptoms ?: "",
+            causes = record.causes ?: "",
+            treatment = record.treatment ?: "",
+            prevention = record.prevention ?: ""
+        )
+        _diseaseInfo.value = Response.Success(info)
+        pickedImage.value = null // Clear local bitmap
+        selectedImageUrl.value = record.image_url
+    }
+
     fun toggleModal(isGemini: Boolean) {
         useGemini.value = isGemini
     }
@@ -129,6 +157,7 @@ class HomeViewModal @Inject constructor(
         viewModelScope.launch {
             _diseaseInfo.value = Response.Loading
             _saveState.value = Response.Loading
+            selectedImageUrl.value = null // Clear history image when new scan starts
             
             if (useGemini.value) {
                 val geminiResponse = repository.getGeminiPrediction(bitmap)

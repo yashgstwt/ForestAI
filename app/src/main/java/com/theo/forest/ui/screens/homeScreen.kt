@@ -9,7 +9,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -22,28 +21,27 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -51,7 +49,6 @@ import com.theo.forest.R
 import com.theo.forest.data.Constant
 import com.theo.forest.data.modal.Response
 import com.theo.forest.ui.viewmodals.HomeViewModal
-import com.theo.forest.ui.theme.ForestTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,23 +56,23 @@ fun HomeScreen(
     viewModal: HomeViewModal = hiltViewModel(),
     navToDetail: () -> Unit = {},
     navToWeather: () -> Unit = {},
+    navToHistory: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
-
-    val secondaryColor = MaterialTheme.colorScheme.secondary
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     val diseaseInfoState by viewModal.diseaseInfo.collectAsState()
     val saveState by viewModal.saveState.collectAsState()
     val useGemini by viewModal.useGemini
+    val result by viewModal.result
 
     LaunchedEffect(saveState) {
         when (saveState) {
             is Response.Success -> {
-                Toast.makeText(context, "Data successfully saved to Supabase!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Data successfully saved!", Toast.LENGTH_SHORT).show()
             }
             is Response.Error -> {
-                Toast.makeText(context, "Error saving to Supabase: ${(saveState as Response.Error).error}", Toast.LENGTH_LONG).show()
+                Log.e("Supabase", "Save error: ${(saveState as Response.Error).error}")
             }
             else -> {}
         }
@@ -96,54 +93,23 @@ fun HomeScreen(
             }
         }
 
-    val stroke = Stroke(
-        width = 8f,
-        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-    )
-
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        containerColor = Color(0xFFE8F0E0),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Forest Disease Detection", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        viewModal.logout()
-                        onLogout()
-                    }) {
-                        Icon(painter = painterResource(R.drawable.home), contentDescription = "Logout") // Reusing home icon for logout
+            TopAppBar(
+                title = {
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Text("Forest", fontWeight = FontWeight.Bold, color = Color(0xFF2E4D24))
                     }
                 },
-                actions = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 16.dp)
-                    ) {
-                        Text(
-                            text = if (useGemini) "Gemini AI" else "Local TFLite",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (useGemini) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Switch(
-                            checked = useGemini,
-                            onCheckedChange = { viewModal.toggleModal(it) },
-                            thumbContent = {
-                                Icon(
-                                    painter = painterResource(if (useGemini) R.drawable.chat else R.drawable.leaf),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
-                            }
-                        )
-                    }
-                }
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
             )
         },
         bottomBar = {
             ForestBottomBar(
                 currentScreen = "home",
                 onHomeClick = { /* Already on Home */ },
+                onHistoryClick = navToHistory,
                 onWeatherClick = navToWeather
             )
         }
@@ -151,117 +117,124 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            verticalArrangement = Arrangement.Top,
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Column(
+            Spacer(modifier = Modifier.height(30.dp))
+
+            // Custom Mode Toggle
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .width(90.dp)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(Color(0xFF1B3113))
+                        .clickable { viewModal.toggleModal(!useGemini) },
+                    contentAlignment = if (useGemini) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap!!.asImageBitmap(),
+                    Box(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(if (useGemini) R.drawable.chat else R.drawable.leaf),
                             contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
-                                .clip(RoundedCornerShape(40.dp))
-                                .clickable {
-                                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                },
-                            contentScale = ContentScale.Crop
+                            tint = Color(0xFF4A148C),
+                            modifier = Modifier.size(24.dp)
                         )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(250.dp)
-                                .clickable {
-                                    pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                }
-                                .drawBehind {
-                                    drawRoundRect(
-                                        secondaryColor,
-                                        style = stroke,
-                                        cornerRadius = CornerRadius(40.dp.toPx())
-                                    )
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.leaf),
-                                contentDescription = null,
-                                modifier = Modifier.size(100.dp),
-                                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
-                            )
-                        }
                     }
+                }
+                Text(
+                    text = if (useGemini) "Mode:Online" else "Mode:Offline",
+                    color = Color(0xFF1B3113),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
-                    when (diseaseInfoState) {
-                        is Response.Loading -> {
-                            if (bitmap != null) {
-                                LoadingUI("Analyzing Leaf...")
-                            } else {
-                                Text(
-                                    "Please Select Diseased Leaf Image",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                        is Response.Success -> {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = viewModal.result.value.disease.uppercase(),
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = "Confidence: ${(viewModal.result.value.confidence * 100).toInt()}%",
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                                if(!viewModal.result.value.disease.contains("background" , true)){
-                                    Button(
-                                        onClick = navToDetail,
-                                        modifier = Modifier.padding(top = 16.dp),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text("View Details")
-                                    }
-                                }
-                            }
-                        }
-                        is Response.Error -> {
-                            ErrorUI(
-                                message = (diseaseInfoState as Response.Error).error,
-                                onRetry = { bitmap?.let { viewModal.getPrediction(it) } }
-                            )
-                        }
-                    }
+            // Image Container
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp)
+                    .clip(RoundedCornerShape(40.dp))
+                    .background(Color.White.copy(alpha = 0.3f))
+                    .clickable { pickMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                contentAlignment = Alignment.Center
+            ) {
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap!!.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.leaf),
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = Color(0xFF1B3113).copy(alpha = 0.5f)
+                    )
                 }
             }
 
-            Column(modifier = Modifier.padding(bottom = 20.dp)) {
-                Text(
-                    "Supported Crops",
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold
-                )
-                CropLabel(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp)
-                )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Prediction Text
+            when (diseaseInfoState) {
+                is Response.Loading -> {
+                    if (bitmap != null) {
+                        LoadingUI("Analyzing...")
+                    } else {
+                        Text(
+                            "Please Select a Leaf Image",
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF1B3113)
+                        )
+                    }
+                }
+                is Response.Success -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = result.disease.uppercase(),
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1B3113),
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "Confidence: ${(result.confidence * 10000).toInt()}%",
+                            fontSize = 16.sp,
+                            color = Color.Black.copy(alpha = 0.7f)
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Button(
+                            onClick = navToDetail,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B3113)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.width(160.dp)
+                        ) {
+                            Text("View Details", color = Color.White)
+                        }
+                    }
+                }
+                is Response.Error -> {
+                    ErrorUI(
+                        message = (diseaseInfoState as Response.Error).error,
+                        onRetry = { bitmap?.let { viewModal.getPrediction(it) } }
+                    )
+                }
             }
         }
     }
@@ -271,36 +244,69 @@ fun HomeScreen(
 fun ForestBottomBar(
     currentScreen: String,
     onHomeClick: () -> Unit,
+    onHistoryClick: () -> Unit,
     onWeatherClick: () -> Unit
 ) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.primary,
-        tonalElevation = 8.dp
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 24.dp),
+        contentAlignment = Alignment.Center
     ) {
-        NavigationBarItem(
-            selected = currentScreen == "home",
-            onClick = onHomeClick,
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.home),
-                    contentDescription = "Home",
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Home") }
-        )
-        NavigationBarItem(
-            selected = currentScreen == "weather",
-            onClick = onWeatherClick,
-            icon = {
-                Icon(
-                    painter = painterResource(R.drawable.chat), // Using chat icon as weather/forecast for now
-                    contentDescription = "Weather",
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Weather") }
+        Row(
+            modifier = Modifier
+                .background(Color(0xFF2D2D2D), RoundedCornerShape(50.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Home Icon
+            BottomBarItem(
+                isSelected = currentScreen == "home",
+                icon = Icons.Default.Home,
+                contentDescription = "Home",
+                onClick = onHomeClick
+            )
+
+            // Weather Icon
+            BottomBarItem(
+                isSelected = currentScreen == "weather",
+                icon = Icons.Default.Cloud,
+                contentDescription = "Weather",
+                onClick = onWeatherClick
+            )
+
+            // History Icon
+            BottomBarItem(
+                isSelected = currentScreen == "history",
+                icon = Icons.AutoMirrored.Filled.List,
+                contentDescription = "History",
+                onClick = onHistoryClick
+            )
+        }
+    }
+}
+
+@Composable
+fun BottomBarItem(
+    isSelected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(54.dp)
+            .clip(CircleShape)
+            .background(if (isSelected) Color(0xFFC5E17A) else Color.Transparent)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (isSelected) Color.Black else Color.White,
+            modifier = Modifier.size(28.dp)
         )
     }
 }
@@ -323,15 +329,15 @@ fun LoadingUI(message: String) {
         verticalArrangement = Arrangement.Center
     ) {
         Icon(
-            painter = painterResource(R.drawable.leaf), // Reusing leaf icon for loading
+            painter = painterResource(R.drawable.leaf),
             contentDescription = null,
             modifier = Modifier
                 .size(50.dp)
                 .rotate(angle),
-            tint = MaterialTheme.colorScheme.primary
+            tint = Color(0xFF1B3113)
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = message, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+        Text(text = message, fontSize = 16.sp, color = Color(0xFF1B3113))
     }
 }
 
