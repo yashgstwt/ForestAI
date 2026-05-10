@@ -103,10 +103,10 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text("Forest", fontWeight = FontWeight.Bold, color = Color(0xFF2E4D24))
+                        Text("Forest", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondary),
             )
         },
         bottomBar = {
@@ -134,7 +134,7 @@ fun HomeScreen(
                         .width(90.dp)
                         .height(48.dp)
                         .clip(RoundedCornerShape(30.dp))
-                        .background(Color(0xFF1B3113))
+                        .background(MaterialTheme.colorScheme.secondary)
                         .clickable { viewModal.toggleModal(!useGemini) },
                     contentAlignment = if (useGemini) Alignment.CenterEnd else Alignment.CenterStart
                 ) {
@@ -149,7 +149,7 @@ fun HomeScreen(
                         Icon(
                             painter = painterResource(if (useGemini) R.drawable.chat else R.drawable.leaf),
                             contentDescription = null,
-                            tint = Color(0xFF4A148C),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -219,7 +219,7 @@ fun HomeScreen(
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "Confidence: ${(result.confidence * 10000).toInt()}%",
+                            text = "Confidence: ${"%.2f".format(result.confidence * 100)}%",
                             fontSize = 16.sp,
                             color = Color.Black.copy(alpha = 0.7f)
                         )

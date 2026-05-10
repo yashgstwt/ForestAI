@@ -136,7 +136,7 @@ fun HistoryItem(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Confidence: ${(record.confidence * 100).toInt()}%",
+                    text = "Confidence: ${"%.2f".format(record.confidence * 100)}%",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.outline
                 )

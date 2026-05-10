@@ -144,7 +144,7 @@ fun DetailScreen(
             // Confidence Score
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                "Accuracy: ${(mlResult.confidence * 100).toInt()}%",
+                "Accuracy: ${"%.2f".format(mlResult.confidence * 100)}%",
                 fontSize = 16.sp,
                 color = Color.Gray
             )

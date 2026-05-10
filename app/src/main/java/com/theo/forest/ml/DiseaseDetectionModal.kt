@@ -67,7 +67,7 @@
             // Ensure all components are loaded before running
             if (!::tflite.isInitialized || !::metadata.isInitialized || !::labels.isInitialized) {
                 Log.e("TFLite", "Inference aborted: Initialization not complete")
-                return MLResult("Inference aborted: Initialization not complete", 100f)
+                return MLResult("Inference aborted: Initialization not complete", 0f)
             }
 
             try {
@@ -92,11 +92,11 @@
                 val resultLabel = labels.getOrNull(maxIndex) ?: "Unknown"
                 val confidence = probabilities[maxIndex]
                 Log.d("TFLite", "Prediction: $resultLabel (${confidence * 100}%)")
-                return MLResult(resultLabel, confidence * 100)
+                return MLResult(resultLabel, confidence)
             } catch (e: Exception) {
                 Log.e("TFLite", "Inference error: ${e.message}")
             }
-            return MLResult("Unable to Detect Disease", 100f)
+            return MLResult("Unable to Detect Disease", 0f)
         }
 
         private fun convertBitmapToByteBuffer(bitmap: Bitmap): ByteBuffer {
